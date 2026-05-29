@@ -72,19 +72,32 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Stella Hosting — Deploy from GitHub in seconds" },
+      {
+        name: "description",
+        content:
+          "Stella Hosting is a premium cloud platform to deploy apps directly from GitHub with isolated containers, real-time logs, custom domains, SSL and built-in security.",
+      },
+      { name: "author", content: "Stella Hosting" },
+      { property: "og:title", content: "Stella Hosting — Premium Cloud Hosting" },
+      {
+        property: "og:description",
+        content: "Deploy from GitHub, scale instantly, and monitor everything from one beautiful dashboard.",
+      },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:site", content: "@StellaHosting" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
+      },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap",
       },
     ],
   }),
