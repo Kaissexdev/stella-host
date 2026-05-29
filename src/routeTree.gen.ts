@@ -13,7 +13,9 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardServicesRouteImport } from './routes/dashboard.services'
+import { Route as DashboardSecurityRouteImport } from './routes/dashboard.security'
 import { Route as DashboardDeployRouteImport } from './routes/dashboard.deploy'
+import { Route as DashboardAnalyticsRouteImport } from './routes/dashboard.analytics'
 
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
@@ -35,22 +37,36 @@ const DashboardServicesRoute = DashboardServicesRouteImport.update({
   path: '/services',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardSecurityRoute = DashboardSecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardDeployRoute = DashboardDeployRouteImport.update({
   id: '/deploy',
   path: '/deploy',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardAnalyticsRoute = DashboardAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
   getParentRoute: () => DashboardRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteWithChildren
+  '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/deploy': typeof DashboardDeployRoute
+  '/dashboard/security': typeof DashboardSecurityRoute
   '/dashboard/services': typeof DashboardServicesRoute
   '/dashboard/': typeof DashboardIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/deploy': typeof DashboardDeployRoute
+  '/dashboard/security': typeof DashboardSecurityRoute
   '/dashboard/services': typeof DashboardServicesRoute
   '/dashboard': typeof DashboardIndexRoute
 }
@@ -58,7 +74,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteWithChildren
+  '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/deploy': typeof DashboardDeployRoute
+  '/dashboard/security': typeof DashboardSecurityRoute
   '/dashboard/services': typeof DashboardServicesRoute
   '/dashboard/': typeof DashboardIndexRoute
 }
@@ -67,16 +85,26 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/dashboard'
+    | '/dashboard/analytics'
     | '/dashboard/deploy'
+    | '/dashboard/security'
     | '/dashboard/services'
     | '/dashboard/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard/deploy' | '/dashboard/services' | '/dashboard'
+  to:
+    | '/'
+    | '/dashboard/analytics'
+    | '/dashboard/deploy'
+    | '/dashboard/security'
+    | '/dashboard/services'
+    | '/dashboard'
   id:
     | '__root__'
     | '/'
     | '/dashboard'
+    | '/dashboard/analytics'
     | '/dashboard/deploy'
+    | '/dashboard/security'
     | '/dashboard/services'
     | '/dashboard/'
   fileRoutesById: FileRoutesById
@@ -116,6 +144,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardServicesRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/security': {
+      id: '/dashboard/security'
+      path: '/security'
+      fullPath: '/dashboard/security'
+      preLoaderRoute: typeof DashboardSecurityRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/deploy': {
       id: '/dashboard/deploy'
       path: '/deploy'
@@ -123,17 +158,28 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardDeployRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/analytics': {
+      id: '/dashboard/analytics'
+      path: '/analytics'
+      fullPath: '/dashboard/analytics'
+      preLoaderRoute: typeof DashboardAnalyticsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
   }
 }
 
 interface DashboardRouteChildren {
+  DashboardAnalyticsRoute: typeof DashboardAnalyticsRoute
   DashboardDeployRoute: typeof DashboardDeployRoute
+  DashboardSecurityRoute: typeof DashboardSecurityRoute
   DashboardServicesRoute: typeof DashboardServicesRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardAnalyticsRoute: DashboardAnalyticsRoute,
   DashboardDeployRoute: DashboardDeployRoute,
+  DashboardSecurityRoute: DashboardSecurityRoute,
   DashboardServicesRoute: DashboardServicesRoute,
   DashboardIndexRoute: DashboardIndexRoute,
 }
