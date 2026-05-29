@@ -80,7 +80,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "Stella Hosting is a premium cloud platform to deploy apps directly from GitHub with isolated containers, real-time logs, custom domains, SSL and built-in security.",
       },
       { name: "author", content: "Stella Hosting" },
-      { property: "og:title", content: "Stella Hosting — Premium Cloud Hosting" },
+      { property: "og:title", content: "Stella Hosting — Deploy from GitHub in seconds" },
       {
         property: "og:description",
         content: "Deploy from GitHub, scale instantly, and monitor everything from one beautiful dashboard.",
@@ -88,6 +88,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@StellaHosting" },
+      { name: "twitter:title", content: "Stella Hosting — Deploy from GitHub in seconds" },
+      { name: "description", content: "Stella Hosting provides a premium cloud hosting platform for deploying and managing web applications." },
+      { property: "og:description", content: "Stella Hosting provides a premium cloud hosting platform for deploying and managing web applications." },
+      { name: "twitter:description", content: "Stella Hosting provides a premium cloud hosting platform for deploying and managing web applications." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/54a0e105-8553-47a3-b1f4-19c9b904cd92/id-preview-e8bd44a5--0b5e87ad-7a05-471e-924d-d12a61212a4c.lovable.app-1780025179335.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/54a0e105-8553-47a3-b1f4-19c9b904cd92/id-preview-e8bd44a5--0b5e87ad-7a05-471e-924d-d12a61212a4c.lovable.app-1780025179335.png" },
     ],
     links: [
       {
