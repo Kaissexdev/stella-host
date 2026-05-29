@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
+import { Route as DashboardTicketsRouteImport } from './routes/dashboard.tickets'
+import { Route as DashboardSettingsRouteImport } from './routes/dashboard.settings'
 import { Route as DashboardServicesRouteImport } from './routes/dashboard.services'
 import { Route as DashboardSecurityRouteImport } from './routes/dashboard.security'
 import { Route as DashboardDeployRouteImport } from './routes/dashboard.deploy'
@@ -30,6 +32,16 @@ const IndexRoute = IndexRouteImport.update({
 const DashboardIndexRoute = DashboardIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardTicketsRoute = DashboardTicketsRouteImport.update({
+  id: '/tickets',
+  path: '/tickets',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardServicesRoute = DashboardServicesRouteImport.update({
@@ -60,6 +72,8 @@ export interface FileRoutesByFullPath {
   '/dashboard/deploy': typeof DashboardDeployRoute
   '/dashboard/security': typeof DashboardSecurityRoute
   '/dashboard/services': typeof DashboardServicesRoute
+  '/dashboard/settings': typeof DashboardSettingsRoute
+  '/dashboard/tickets': typeof DashboardTicketsRoute
   '/dashboard/': typeof DashboardIndexRoute
 }
 export interface FileRoutesByTo {
@@ -68,6 +82,8 @@ export interface FileRoutesByTo {
   '/dashboard/deploy': typeof DashboardDeployRoute
   '/dashboard/security': typeof DashboardSecurityRoute
   '/dashboard/services': typeof DashboardServicesRoute
+  '/dashboard/settings': typeof DashboardSettingsRoute
+  '/dashboard/tickets': typeof DashboardTicketsRoute
   '/dashboard': typeof DashboardIndexRoute
 }
 export interface FileRoutesById {
@@ -78,6 +94,8 @@ export interface FileRoutesById {
   '/dashboard/deploy': typeof DashboardDeployRoute
   '/dashboard/security': typeof DashboardSecurityRoute
   '/dashboard/services': typeof DashboardServicesRoute
+  '/dashboard/settings': typeof DashboardSettingsRoute
+  '/dashboard/tickets': typeof DashboardTicketsRoute
   '/dashboard/': typeof DashboardIndexRoute
 }
 export interface FileRouteTypes {
@@ -89,6 +107,8 @@ export interface FileRouteTypes {
     | '/dashboard/deploy'
     | '/dashboard/security'
     | '/dashboard/services'
+    | '/dashboard/settings'
+    | '/dashboard/tickets'
     | '/dashboard/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -97,6 +117,8 @@ export interface FileRouteTypes {
     | '/dashboard/deploy'
     | '/dashboard/security'
     | '/dashboard/services'
+    | '/dashboard/settings'
+    | '/dashboard/tickets'
     | '/dashboard'
   id:
     | '__root__'
@@ -106,6 +128,8 @@ export interface FileRouteTypes {
     | '/dashboard/deploy'
     | '/dashboard/security'
     | '/dashboard/services'
+    | '/dashboard/settings'
+    | '/dashboard/tickets'
     | '/dashboard/'
   fileRoutesById: FileRoutesById
 }
@@ -135,6 +159,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/dashboard/'
       preLoaderRoute: typeof DashboardIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/tickets': {
+      id: '/dashboard/tickets'
+      path: '/tickets'
+      fullPath: '/dashboard/tickets'
+      preLoaderRoute: typeof DashboardTicketsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/settings': {
+      id: '/dashboard/settings'
+      path: '/settings'
+      fullPath: '/dashboard/settings'
+      preLoaderRoute: typeof DashboardSettingsRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/services': {
@@ -173,6 +211,8 @@ interface DashboardRouteChildren {
   DashboardDeployRoute: typeof DashboardDeployRoute
   DashboardSecurityRoute: typeof DashboardSecurityRoute
   DashboardServicesRoute: typeof DashboardServicesRoute
+  DashboardSettingsRoute: typeof DashboardSettingsRoute
+  DashboardTicketsRoute: typeof DashboardTicketsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
 }
 
@@ -181,6 +221,8 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardDeployRoute: DashboardDeployRoute,
   DashboardSecurityRoute: DashboardSecurityRoute,
   DashboardServicesRoute: DashboardServicesRoute,
+  DashboardSettingsRoute: DashboardSettingsRoute,
+  DashboardTicketsRoute: DashboardTicketsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
 }
 
