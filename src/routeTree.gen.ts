@@ -18,6 +18,7 @@ import { Route as DashboardServicesRouteImport } from './routes/dashboard.servic
 import { Route as DashboardSecurityRouteImport } from './routes/dashboard.security'
 import { Route as DashboardDeployRouteImport } from './routes/dashboard.deploy'
 import { Route as DashboardAnalyticsRouteImport } from './routes/dashboard.analytics'
+import { Route as DashboardAdminRouteImport } from './routes/dashboard.admin'
 
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
@@ -64,10 +65,16 @@ const DashboardAnalyticsRoute = DashboardAnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardAdminRoute = DashboardAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => DashboardRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteWithChildren
+  '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/deploy': typeof DashboardDeployRoute
   '/dashboard/security': typeof DashboardSecurityRoute
@@ -78,6 +85,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/deploy': typeof DashboardDeployRoute
   '/dashboard/security': typeof DashboardSecurityRoute
@@ -90,6 +98,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteWithChildren
+  '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/deploy': typeof DashboardDeployRoute
   '/dashboard/security': typeof DashboardSecurityRoute
@@ -103,6 +112,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/dashboard'
+    | '/dashboard/admin'
     | '/dashboard/analytics'
     | '/dashboard/deploy'
     | '/dashboard/security'
@@ -113,6 +123,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/dashboard/admin'
     | '/dashboard/analytics'
     | '/dashboard/deploy'
     | '/dashboard/security'
@@ -124,6 +135,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/dashboard'
+    | '/dashboard/admin'
     | '/dashboard/analytics'
     | '/dashboard/deploy'
     | '/dashboard/security'
@@ -203,10 +215,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAnalyticsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/admin': {
+      id: '/dashboard/admin'
+      path: '/admin'
+      fullPath: '/dashboard/admin'
+      preLoaderRoute: typeof DashboardAdminRouteImport
+      parentRoute: typeof DashboardRoute
+    }
   }
 }
 
 interface DashboardRouteChildren {
+  DashboardAdminRoute: typeof DashboardAdminRoute
   DashboardAnalyticsRoute: typeof DashboardAnalyticsRoute
   DashboardDeployRoute: typeof DashboardDeployRoute
   DashboardSecurityRoute: typeof DashboardSecurityRoute
@@ -217,6 +237,7 @@ interface DashboardRouteChildren {
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardAdminRoute: DashboardAdminRoute,
   DashboardAnalyticsRoute: DashboardAnalyticsRoute,
   DashboardDeployRoute: DashboardDeployRoute,
   DashboardSecurityRoute: DashboardSecurityRoute,
