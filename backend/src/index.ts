@@ -3,7 +3,7 @@ import express from "express";
 import helmet from "helmet";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import "./types/express.js";
+/// <reference path="./types/express.d.ts" />
 
 import { env } from "./config/env.js";
 import { prisma } from "./lib/prisma.js";
