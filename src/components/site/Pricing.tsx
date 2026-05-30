@@ -54,7 +54,7 @@ export function Pricing() {
               className={cn(
                 "relative rounded-3xl p-7 hover-lift",
                 p.highlighted
-                  ? "glass glow-ring bg-primary/[0.06]"
+                  ? "glass glass-ring bg-primary/[0.06]"
                   : "glass",
               )}
             >

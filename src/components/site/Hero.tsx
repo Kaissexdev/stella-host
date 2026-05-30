@@ -28,7 +28,7 @@ export function Hero() {
           className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full glass px-4 py-1.5 text-xs font-medium animate-fade-in"
           style={{ animationDelay: "0.05s" }}
         >
-          <span className="flex size-2 rounded-full bg-success animate-pulse-glow" />
+          <span className="flex size-2 rounded-full bg-success animate-status-pulse" />
           New · GitHub-native deploys with isolated containers
         </div>
 

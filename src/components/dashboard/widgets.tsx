@@ -79,8 +79,8 @@ export function StatusBadge({ status }: { status: ServiceStatus }) {
       <span
         className={cn(
           "size-1.5 rounded-full",
-          status === "running" && "bg-success animate-pulse-glow",
-          status === "building" && "bg-warning animate-pulse-glow",
+          status === "running" && "bg-success animate-status-pulse",
+          status === "building" && "bg-warning animate-status-pulse",
           status === "stopped" && "bg-muted-foreground",
           (status === "suspended" || status === "error") && "bg-destructive",
         )}

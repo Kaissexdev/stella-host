@@ -46,7 +46,7 @@ export function StatusSection() {
             {systems.map((s) => (
               <div key={s.name} className="flex items-center justify-between py-3.5">
                 <span className="flex items-center gap-2.5 text-sm font-medium">
-                  <span className="size-2 rounded-full bg-success animate-pulse-glow" />
+                  <span className="size-2 rounded-full bg-success animate-status-pulse" />
                   {s.name}
                 </span>
                 <span className="flex items-center gap-4 text-sm">
