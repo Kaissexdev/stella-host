@@ -106,11 +106,13 @@
   --chart-4: oklch(0.78 0.15 75);
   --chart-5: oklch(0.62 0.2 320);
 
-  --glow: 0 0 0 1px color-mix(in oklab, var(--primary) 30%, transparent), 0 0 40px -8px color-mix(in oklab, var(--primary) 45%, transparent);
   --gradient-primary: linear-gradient(135deg, oklch(0.72 0.15 195), oklch(0.62 0.16 230));
   --gradient-hero: radial-gradient(120% 120% at 50% 0%, oklch(0.95 0.03 200) 0%, oklch(0.98 0.005 220) 55%);
-  --glass-bg: color-mix(in oklab, oklch(1 0 0) 70%, transparent);
-  --glass-border: color-mix(in oklab, oklch(0.6 0.13 195) 16%, transparent);
+  /* Liquid Glass surfaces — translucent, frosted, with specular edge highlight and soft ambient depth (no neon glow) */
+  --glass-bg: linear-gradient(135deg, color-mix(in oklab, oklch(1 0 0) 78%, transparent), color-mix(in oklab, oklch(1 0 0) 55%, transparent));
+  --glass-border: color-mix(in oklab, oklch(1 0 0) 75%, transparent);
+  --glass-highlight: inset 0 1px 0 0 color-mix(in oklab, oklch(1 0 0) 85%, transparent), inset 0 0 0 1px color-mix(in oklab, oklch(1 0 0) 40%, transparent);
+  --glass-shadow: 0 8px 32px -12px color-mix(in oklab, oklch(0.4 0.04 240) 28%, transparent), 0 2px 8px -4px color-mix(in oklab, oklch(0.4 0.04 240) 18%, transparent);
 
   --sidebar: oklch(0.99 0.004 220);
   --sidebar-foreground: oklch(0.25 0.03 245);
