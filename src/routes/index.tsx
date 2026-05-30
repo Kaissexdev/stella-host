@@ -35,7 +35,7 @@ function CtaBand() {
   return (
     <section className="relative py-24">
       <div className="mx-auto max-w-5xl px-4">
-        <div className="glass glow-ring relative overflow-hidden rounded-3xl bg-primary/[0.06] p-10 text-center sm:p-16">
+        <div className="glass-panel relative overflow-hidden rounded-3xl p-10 text-center sm:p-16">
           <div className="pointer-events-none absolute inset-0 bg-grid opacity-20" />
           <div className="relative">
             <h2 className="mx-auto max-w-2xl text-3xl font-bold sm:text-4xl md:text-5xl">

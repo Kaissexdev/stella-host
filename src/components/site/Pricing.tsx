@@ -54,12 +54,12 @@ export function Pricing() {
               className={cn(
                 "relative rounded-3xl p-7 hover-lift",
                 p.highlighted
-                  ? "glass glow-ring bg-primary/[0.06]"
+                  ? "glass glass-ring bg-primary/[0.06]"
                   : "glass",
               )}
             >
               {p.highlighted && (
-                <span className="absolute -top-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full bg-gradient-primary px-3 py-1 text-xs font-semibold text-primary-foreground shadow-[var(--glow)]">
+                <span className="absolute -top-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full bg-gradient-primary px-3 py-1 text-xs font-semibold text-primary-foreground shadow-[var(--glass-shadow)]">
                   <Sparkles className="size-3.5" /> Most popular
                 </span>
               )}
