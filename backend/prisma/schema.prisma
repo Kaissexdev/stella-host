@@ -1,0 +1,350 @@
+// Stella Hosting — PostgreSQL schema (Prisma)
+// Production-ready data model for users, services, deployments, deployment
+// logs, tickets, and security/abuse-prevention systems.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------------------------------
+// Enums
+// ----------------------------------------------------------------------------
+
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+enum ServiceStatus {
+  PROVISIONING
+  RUNNING
+  STOPPED
+  BUILDING
+  ERROR
+}
+
+enum DeploymentStatus {
+  QUEUED
+  BUILDING
+  DEPLOYING
+  LIVE
+  FAILED
+  CANCELLED
+}
+
+enum DeploymentSource {
+  MANUAL
+  WEBHOOK
+  REDEPLOY
+}
+
+enum LogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+}
+
+enum LogStream {
+  STDOUT
+  STDERR
+  SYSTEM
+}
+
+enum TicketStatus {
+  OPEN
+  PENDING
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum SecurityEventType {
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  LOGOUT
+  SESSION_REVOKED
+  RATE_LIMITED
+  WEBHOOK_RECEIVED
+  WEBHOOK_REJECTED
+  ABUSE_BLOCKED
+  MULTI_ACCOUNT_SUSPECTED
+  IP_BLOCKED
+  USER_BANNED
+  USER_SUSPENDED
+  PERMISSION_DENIED
+}
+
+enum Severity {
+  INFO
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+// ----------------------------------------------------------------------------
+// Core
+// ----------------------------------------------------------------------------
+
+model User {
+  id        String     @id @default(cuid())
+  githubId  String     @unique
+  username  String     @unique
+  email     String?    @unique
+  name      String?
+  avatarUrl String?
+  role      Role       @default(USER)
+  status    UserStatus @default(ACTIVE)
+
+  serviceLimit Int      @default(5)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  lastLoginAt  DateTime?
+
+  services     Service[]
+  deployments  Deployment[]
+  tickets      Ticket[]
+  sessions     Session[]
+  securityLogs SecurityLog[]
+  loginEvents  LoginEvent[]
+  abuseFlags   AbuseFlag[]
+  ticketMessages TicketMessage[]
+
+  @@index([status])
+  @@index([role])
+}
+
+model Session {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Opaque session token is stored hashed (sha256) — never in plaintext.
+  tokenHash          String   @unique
+  ip                 String?
+  userAgent          String?
+  deviceFingerprint  String?
+  expiresAt          DateTime
+  createdAt          DateTime @default(now())
+  lastSeenAt         DateTime @default(now())
+  revokedAt          DateTime?
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Service {
+  id           String        @id @default(cuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  slug         String        @unique
+  repoFullName String // e.g. "stella-labs/aurora-api"
+  branch       String        @default("main")
+  type         String        @default("web") // web | worker | cron | static
+  region       String        @default("eu-central")
+  plan         String        @default("starter")
+  status       ServiceStatus @default(PROVISIONING)
+  buildCommand String        @default("npm install && npm run build")
+  startCommand String        @default("npm start")
+  autoDeploy   Boolean       @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  deployments Deployment[]
+  envVars     EnvVar[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Deployment {
+  id            String           @id @default(cuid())
+  serviceId     String
+  service       Service          @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status        DeploymentStatus @default(QUEUED)
+  source        DeploymentSource @default(MANUAL)
+  branch        String           @default("main")
+  commitSha     String?
+  commitMessage String?
+  commitAuthor  String?
+  url           String?
+  durationMs    Int?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  startedAt     DateTime?
+  finishedAt    DateTime?
+
+  logs DeploymentLog[]
+
+  @@index([serviceId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model DeploymentLog {
+  id           String     @id @default(cuid())
+  deploymentId String
+  deployment   Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  level        LogLevel   @default(INFO)
+  stream       LogStream  @default(STDOUT)
+  message      String
+  timestamp    DateTime   @default(now())
+
+  @@index([deploymentId])
+  @@index([timestamp])
+}
+
+model EnvVar {
+  id        String   @id @default(cuid())
+  serviceId String
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  key       String
+  // Value stored encrypted (AES-256-GCM) at rest.
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([serviceId, key])
+  @@index([serviceId])
+}
+
+// ----------------------------------------------------------------------------
+// Support tickets
+// ----------------------------------------------------------------------------
+
+model Ticket {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject   String
+  status    TicketStatus   @default(OPEN)
+  priority  TicketPriority @default(NORMAL)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  messages TicketMessage[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model TicketMessage {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+}
+
+// ----------------------------------------------------------------------------
+// Security & abuse prevention
+// ----------------------------------------------------------------------------
+
+model SecurityLog {
+  id                String            @id @default(cuid())
+  userId            String?
+  user              User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  type              SecurityEventType
+  severity          Severity          @default(INFO)
+  message           String
+  ip                String?
+  userAgent         String?
+  deviceFingerprint String?
+  metadata          Json?
+  createdAt         DateTime          @default(now())
+
+  @@index([userId])
+  @@index([type])
+  @@index([severity])
+  @@index([createdAt])
+}
+
+model LoginEvent {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ip                String
+  location          String?
+  userAgent         String?
+  deviceFingerprint String?
+  success           Boolean  @default(true)
+  flagged           Boolean  @default(false)
+  flagReason        String?
+  createdAt         DateTime @default(now())
+
+  @@index([userId])
+  @@index([ip])
+  @@index([deviceFingerprint])
+  @@index([createdAt])
+}
+
+// Tracks every IP/device pair seen, used to detect multi-account bypass.
+model IdentitySignal {
+  id                String   @id @default(cuid())
+  userId            String
+  ip                String
+  deviceFingerprint String
+  asn               String?
+  isVpn             Boolean  @default(false)
+  isProxy           Boolean  @default(false)
+  seenCount         Int      @default(1)
+  firstSeenAt       DateTime @default(now())
+  lastSeenAt        DateTime @default(now())
+
+  @@unique([userId, ip, deviceFingerprint])
+  @@index([ip])
+  @@index([deviceFingerprint])
+}
+
+model BlockedIp {
+  id        String    @id @default(cuid())
+  ip        String    @unique
+  reason    String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+
+  @@index([expiresAt])
+}
+
+model AbuseFlag {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ip                String?
+  deviceFingerprint String?
+  reason            String
+  score             Int      @default(0)
+  resolved          Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  @@index([userId])
+  @@index([resolved])
+}
