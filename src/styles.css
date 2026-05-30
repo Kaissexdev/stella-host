@@ -273,9 +273,9 @@
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-12px); }
 }
-@keyframes pulse-glow {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
+@keyframes status-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.82); }
 }
 @keyframes shimmer {
   0% { background-position: -200% 0; }
