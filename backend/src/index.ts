@@ -79,6 +79,7 @@ start().catch((err) => {
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.on(signal, async () => {
     console.log(`\n${signal} received, shutting down…`);
+    stopRunner();
     httpServer.close();
     await prisma.$disconnect();
     redis.disconnect();
