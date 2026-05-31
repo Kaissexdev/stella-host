@@ -9,6 +9,7 @@ import { env } from "./config/env.js";
 import { prisma } from "./lib/prisma.js";
 import { redis } from "./lib/redis.js";
 import { initRealtime } from "./lib/realtime.js";
+import { startRunner, stopRunner } from "./runner/runner.js";
 import { attachUser } from "./middleware/auth.js";
 import { ipGuard } from "./middleware/security.js";
 import { apiLimiter, authLimiter, webhookLimiter } from "./middleware/rate-limit.js";
