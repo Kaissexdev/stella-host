@@ -66,6 +66,8 @@ async function start() {
   httpServer.listen(env.PORT, () => {
     console.log(`🚀 Stella Hosting API listening on :${env.PORT} (${env.NODE_ENV})`);
   });
+  // Start the Docker-based deployment runner (no-op if Docker is unavailable).
+  if (env.RUNNER_ENABLED) await startRunner();
 }
 
 start().catch((err) => {
