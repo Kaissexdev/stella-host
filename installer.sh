@@ -1,0 +1,229 @@
+#!/usr/bin/env bash
+#
+# Stella Hosting — one-shot VPS installer.
+# Installs system dependencies, configures the environment, builds the project,
+# sets up systemd services and starts BOTH the backend API (+ deployment runner)
+# and the frontend. Tested on Debian/Ubuntu and RHEL/Alma/Rocky family.
+#
+# Usage:
+#   sudo bash installer.sh
+#
+set -euo pipefail
+
+# --------------------------------------------------------------------------
+# Config (override via environment before running)
+# --------------------------------------------------------------------------
+APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BACKEND_DIR="${APP_DIR}/backend"
+NODE_MAJOR="${NODE_MAJOR:-20}"
+SERVICE_USER="${SERVICE_USER:-stella}"
+WORKSPACE_DIR="${WORKSPACE_DIR:-/var/lib/stella/workspaces}"
+FRONTEND_PORT="${FRONTEND_PORT:-3000}"
+BACKEND_PORT="${BACKEND_PORT:-4000}"
+
+log()  { printf "\033[1;36m[stella]\033[0m %s\n" "$*"; }
+warn() { printf "\033[1;33m[stella]\033[0m %s\n" "$*"; }
+die()  { printf "\033[1;31m[stella]\033[0m %s\n" "$*" >&2; exit 1; }
+
+[ "$(id -u)" -eq 0 ] || die "Please run as root (sudo bash installer.sh)."
+
+# --------------------------------------------------------------------------
+# Detect package manager
+# --------------------------------------------------------------------------
+if command -v apt-get >/dev/null 2>&1; then PM=apt
+elif command -v dnf >/dev/null 2>&1; then PM=dnf
+elif command -v yum >/dev/null 2>&1; then PM=yum
+else die "Unsupported distro: need apt, dnf or yum."; fi
+
+pkg_install() {
+  case "$PM" in
+    apt) DEBIAN_FRONTEND=noninteractive apt-get install -y "$@" ;;
+    dnf) dnf install -y "$@" ;;
+    yum) yum install -y "$@" ;;
+  esac
+}
+
+log "Updating package index…"
+case "$PM" in
+  apt) apt-get update -y ;;
+  dnf|yum) "$PM" makecache -y || true ;;
+esac
+
+log "Installing base dependencies (git, curl, ca-certificates, openssl)…"
+pkg_install git curl ca-certificates openssl gnupg || pkg_install git curl ca-certificates openssl
+
+# --------------------------------------------------------------------------
+# Node.js
+# --------------------------------------------------------------------------
+if ! command -v node >/dev/null 2>&1 || [ "$(node -v | sed 's/v\([0-9]*\).*/\1/')" -lt "$NODE_MAJOR" ]; then
+  log "Installing Node.js ${NODE_MAJOR}.x…"
+  if [ "$PM" = "apt" ]; then
+    curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | bash -
+    pkg_install nodejs
+  else
+    curl -fsSL "https://rpm.nodesource.com/setup_${NODE_MAJOR}.x" | bash -
+    pkg_install nodejs
+  fi
+else
+  log "Node.js $(node -v) already installed."
+fi
+
+# --------------------------------------------------------------------------
+# Docker (required by the deployment runner)
+# --------------------------------------------------------------------------
+if ! command -v docker >/dev/null 2>&1; then
+  log "Installing Docker…"
+  curl -fsSL https://get.docker.com | sh
+  systemctl enable --now docker || true
+else
+  log "Docker $(docker --version) already installed."
+fi
+
+# --------------------------------------------------------------------------
+# Service user + workspace
+# --------------------------------------------------------------------------
+if ! id "$SERVICE_USER" >/dev/null 2>&1; then
+  log "Creating service user '${SERVICE_USER}'…"
+  useradd --system --create-home --shell /usr/sbin/nologin "$SERVICE_USER" 2>/dev/null \
+    || useradd --system --create-home --shell /sbin/nologin "$SERVICE_USER"
+fi
+usermod -aG docker "$SERVICE_USER" || true
+mkdir -p "$WORKSPACE_DIR"
+chown -R "$SERVICE_USER":"$SERVICE_USER" "$WORKSPACE_DIR"
+
+# --------------------------------------------------------------------------
+# PostgreSQL + Redis (via Docker for portability across distros)
+# --------------------------------------------------------------------------
+log "Ensuring PostgreSQL and Redis containers are running…"
+PG_PASS="${PG_PASS:-$(openssl rand -hex 16)}"
+docker volume create stella-pgdata >/dev/null
+docker volume create stella-redisdata >/dev/null
+
+if ! docker ps -a --format '{{.Names}}' | grep -q '^stella-postgres$'; then
+  docker run -d --name stella-postgres --restart unless-stopped \
+    -e POSTGRES_USER=stella -e POSTGRES_PASSWORD="$PG_PASS" -e POSTGRES_DB=stella \
+    -p 127.0.0.1:5432:5432 -v stella-pgdata:/var/lib/postgresql/data postgres:16-alpine
+fi
+if ! docker ps -a --format '{{.Names}}' | grep -q '^stella-redis$'; then
+  docker run -d --name stella-redis --restart unless-stopped \
+    -p 127.0.0.1:6379:6379 -v stella-redisdata:/data redis:7-alpine \
+    redis-server --appendonly yes
+fi
+
+# --------------------------------------------------------------------------
+# Environment file
+# --------------------------------------------------------------------------
+ENV_FILE="${BACKEND_DIR}/.env"
+if [ ! -f "$ENV_FILE" ]; then
+  log "Generating ${ENV_FILE} (fill in GitHub credentials before going live)…"
+  cat > "$ENV_FILE" <<EOF
+NODE_ENV=production
+PORT=${BACKEND_PORT}
+API_BASE_URL=http://$(hostname -I | awk '{print $1}'):${BACKEND_PORT}
+WEB_BASE_URL=http://$(hostname -I | awk '{print $1}'):${FRONTEND_PORT}
+
+DATABASE_URL=postgresql://stella:${PG_PASS}@127.0.0.1:5432/stella?schema=public
+REDIS_URL=redis://127.0.0.1:6379
+
+SESSION_SECRET=$(openssl rand -hex 32)
+SESSION_TTL_DAYS=7
+
+ENCRYPTION_KEY=$(openssl rand -hex 32)
+
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+GITHUB_WEBHOOK_SECRET=$(openssl rand -hex 32)
+
+MAX_ACCOUNTS_PER_DEVICE=2
+MAX_ACCOUNTS_PER_IP=3
+
+RUNNER_ENABLED=true
+WORKSPACE_DIR=${WORKSPACE_DIR}
+DEPLOY_BASE_IMAGE=node:20-bookworm-slim
+DEPLOY_PUBLIC_HOST=$(hostname -I | awk '{print $1}')
+DEPLOY_PORT_START=41000
+DEPLOY_PORT_END=42000
+DEPLOY_CONTAINER_PORT=8080
+DEPLOY_CPU_LIMIT=1
+DEPLOY_MEMORY_LIMIT=512m
+EOF
+  chown "$SERVICE_USER":"$SERVICE_USER" "$ENV_FILE"
+  chmod 600 "$ENV_FILE"
+else
+  log "Reusing existing ${ENV_FILE}."
+fi
+
+# --------------------------------------------------------------------------
+# Build backend
+# --------------------------------------------------------------------------
+log "Installing & building backend…"
+cd "$BACKEND_DIR"
+npm install
+npx prisma generate
+npm run build
+log "Applying database migrations…"
+npx prisma migrate deploy || npx prisma db push
+
+# --------------------------------------------------------------------------
+# Build frontend
+# --------------------------------------------------------------------------
+log "Installing & building frontend…"
+cd "$APP_DIR"
+: "${VITE_API_BASE_URL:=http://$(hostname -I | awk '{print $1}'):${BACKEND_PORT}}"
+export VITE_API_BASE_URL
+npm install
+npm run build
+
+chown -R "$SERVICE_USER":"$SERVICE_USER" "$APP_DIR"
+
+# --------------------------------------------------------------------------
+# systemd services
+# --------------------------------------------------------------------------
+log "Creating systemd services…"
+cat > /etc/systemd/system/stella-backend.service <<EOF
+[Unit]
+Description=Stella Hosting Backend API + Deployment Runner
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=${SERVICE_USER}
+WorkingDirectory=${BACKEND_DIR}
+EnvironmentFile=${BACKEND_DIR}/.env
+ExecStart=/usr/bin/node ${BACKEND_DIR}/dist/index.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+cat > /etc/systemd/system/stella-frontend.service <<EOF
+[Unit]
+Description=Stella Hosting Frontend (TanStack Start)
+After=network.target stella-backend.service
+
+[Service]
+Type=simple
+User=${SERVICE_USER}
+WorkingDirectory=${APP_DIR}
+Environment=PORT=${FRONTEND_PORT}
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node ${APP_DIR}/.output/server/index.mjs
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable --now stella-backend.service
+systemctl enable --now stella-frontend.service
+
+log "Done! 🚀"
+log "Backend:  http://$(hostname -I | awk '{print $1}'):${BACKEND_PORT}/health"
+log "Frontend: http://$(hostname -I | awk '{print $1}'):${FRONTEND_PORT}"
+warn "Edit ${ENV_FILE} to add GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET, then:"
+warn "  systemctl restart stella-backend"
