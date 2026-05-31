@@ -3,7 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
 import { verifyHmac } from "../lib/crypto.js";
 import { logSecurityEvent } from "../lib/security-log.js";
-import { createDeployment, appendLog, updateDeploymentStatus } from "../services/deployment.service.js";
+import { createDeployment } from "../services/deployment.service.js";
 
 const router = Router();
 
