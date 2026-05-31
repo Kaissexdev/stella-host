@@ -94,5 +94,7 @@ export async function createDeployment(params: {
     message: `Deployment queued from ${params.source.toLowerCase()} (branch ${params.branch}).`,
     stream: "SYSTEM",
   });
+  // Hand the job to the build/deploy runner.
+  await enqueueDeployJob({ deploymentId: deployment.id });
   return deployment;
 }
