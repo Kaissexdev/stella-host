@@ -3,7 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
 import { verifyHmac } from "../lib/crypto.js";
 import { logSecurityEvent } from "../lib/security-log.js";
-import { createDeployment, appendLog, updateDeploymentStatus } from "../services/deployment.service.js";
+import { createDeployment } from "../services/deployment.service.js";
 
 const router = Router();
 
@@ -60,7 +60,9 @@ router.post(
       });
 
       for (const service of services) {
-        const deployment = await createDeployment({
+        // Creating the deployment enqueues it on the runner, which performs the
+        // real checkout → build → container start and streams logs/status live.
+        await createDeployment({
           serviceId: service.id,
           userId: service.userId,
           branch,
@@ -68,21 +70,6 @@ router.post(
           commitSha: head?.id ?? null,
           commitMessage: head?.message ?? null,
           commitAuthor: head?.author?.name ?? null,
-        });
-
-        // Move the deployment into BUILDING so dashboards reflect live status.
-        // The actual container build is performed by the runner connected to
-        // this deployment record (see README — Deploy engine integration).
-        await updateDeploymentStatus({
-          deploymentId: deployment.id,
-          userId: service.userId,
-          status: "BUILDING",
-        });
-        await appendLog({
-          deploymentId: deployment.id,
-          userId: service.userId,
-          message: `Build triggered by push ${head?.id?.slice(0, 7) ?? ""} — "${head?.message ?? ""}"`,
-          stream: "SYSTEM",
         });
       }
     } catch (err) {

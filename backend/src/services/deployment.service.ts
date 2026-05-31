@@ -1,6 +1,7 @@
 import type { DeploymentStatus, LogLevel, LogStream } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { emitRealtime } from "../lib/realtime.js";
+import { enqueueDeployJob } from "../lib/queue.js";
 
 // Centralizes deployment lifecycle writes so every status change and log line
 // is persisted AND pushed to the dashboard in real time.
@@ -93,5 +94,7 @@ export async function createDeployment(params: {
     message: `Deployment queued from ${params.source.toLowerCase()} (branch ${params.branch}).`,
     stream: "SYSTEM",
   });
+  // Hand the job to the build/deploy runner.
+  await enqueueDeployJob({ deploymentId: deployment.id });
   return deployment;
 }

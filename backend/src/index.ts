@@ -9,6 +9,7 @@ import { env } from "./config/env.js";
 import { prisma } from "./lib/prisma.js";
 import { redis } from "./lib/redis.js";
 import { initRealtime } from "./lib/realtime.js";
+import { startRunner, stopRunner } from "./runner/runner.js";
 import { attachUser } from "./middleware/auth.js";
 import { ipGuard } from "./middleware/security.js";
 import { apiLimiter, authLimiter, webhookLimiter } from "./middleware/rate-limit.js";
@@ -65,6 +66,8 @@ async function start() {
   httpServer.listen(env.PORT, () => {
     console.log(`🚀 Stella Hosting API listening on :${env.PORT} (${env.NODE_ENV})`);
   });
+  // Start the Docker-based deployment runner (no-op if Docker is unavailable).
+  if (env.RUNNER_ENABLED) await startRunner();
 }
 
 start().catch((err) => {
@@ -76,6 +79,7 @@ start().catch((err) => {
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.on(signal, async () => {
     console.log(`\n${signal} received, shutting down…`);
+    stopRunner();
     httpServer.close();
     await prisma.$disconnect();
     redis.disconnect();
