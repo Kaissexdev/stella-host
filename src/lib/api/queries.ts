@@ -18,6 +18,7 @@ import type {
   Service,
   SessionInfo,
   Ticket,
+  TicketMessage,
 } from "./types";
 
 // ---------------------------------------------------------------- Services
@@ -212,6 +213,3 @@ export function useBlockIp() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin"] }),
   });
 }
-
-// re-export for the reply mutation type above
-import type { TicketMessage } from "./types";
