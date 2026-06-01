@@ -13,6 +13,8 @@ import {
 import { Logo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth";
+import { useServices } from "@/lib/api/queries";
 
 export const navItems = [
   { label: "Overview", to: "/dashboard", icon: LayoutDashboard, exact: true },
