@@ -34,6 +34,12 @@ export function DashboardSidebar({
   onClose: () => void;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { user, isAdmin } = useAuth();
+  const { data: services } = useServices();
+
+  const used = services?.length ?? 0;
+  const limit = user?.serviceLimit ?? 5;
+  const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
 
   const isActive = (to: string, exact?: boolean) =>
     exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
