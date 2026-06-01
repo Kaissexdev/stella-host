@@ -1,7 +1,8 @@
 import type { LucideIcon } from "lucide-react";
-import { TrendingUp, TrendingDown } from "lucide-react";
-import type { ServiceStatus } from "@/lib/mock-data";
+import { TrendingUp, TrendingDown, Loader2, AlertTriangle, Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+export type BadgeStatus = "running" | "stopped" | "building" | "suspended" | "error";
 
 export function PageHeader({
   title,
@@ -60,7 +61,7 @@ export function StatCard({
   );
 }
 
-const statusStyles: Record<ServiceStatus, string> = {
+const statusStyles: Record<BadgeStatus, string> = {
   running: "bg-success/15 text-success ring-success/25",
   stopped: "bg-muted text-muted-foreground ring-border",
   building: "bg-warning/15 text-warning ring-warning/25",
@@ -68,7 +69,7 @@ const statusStyles: Record<ServiceStatus, string> = {
   error: "bg-destructive/15 text-destructive ring-destructive/25",
 };
 
-export function StatusBadge({ status }: { status: ServiceStatus }) {
+export function StatusBadge({ status }: { status: BadgeStatus }) {
   return (
     <span
       className={cn(
@@ -87,5 +88,47 @@ export function StatusBadge({ status }: { status: ServiceStatus }) {
       />
       {status}
     </span>
+  );
+}
+
+// ----------------------------------------------------------- async UI states
+export function LoadingState({ label = "Loading…" }: { label?: string }) {
+  return (
+    <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+      <Loader2 className="size-4 animate-spin" /> {label}
+    </div>
+  );
+}
+
+export function ErrorState({ message }: { message?: string }) {
+  return (
+    <div className="glass flex flex-col items-center justify-center gap-2 rounded-2xl py-16 text-center">
+      <AlertTriangle className="size-6 text-destructive" />
+      <p className="text-sm font-medium">Couldn't load data</p>
+      <p className="max-w-md px-4 text-xs text-muted-foreground">
+        {message ?? "The Stella Hosting backend is unreachable. Verify the API is running and VITE_API_URL is configured."}
+      </p>
+    </div>
+  );
+}
+
+export function EmptyState({
+  title,
+  description,
+  icon: Icon = Inbox,
+  action,
+}: {
+  title: string;
+  description?: string;
+  icon?: LucideIcon;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="glass flex flex-col items-center justify-center gap-2 rounded-2xl py-16 text-center">
+      <Icon className="size-6 text-muted-foreground" />
+      <p className="text-sm font-medium">{title}</p>
+      {description && <p className="max-w-md px-4 text-xs text-muted-foreground">{description}</p>}
+      {action && <div className="mt-2">{action}</div>}
+    </div>
   );
 }

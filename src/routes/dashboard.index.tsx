@@ -1,27 +1,22 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { Boxes, Rocket, ShieldCheck, GitCommit, Cpu, ArrowRight } from "lucide-react";
 import {
-  Boxes,
-  Rocket,
-  ShieldCheck,
-  Activity,
-  Cpu,
-  MemoryStick,
-  GitCommit,
-  ArrowRight,
-} from "lucide-react";
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-} from "recharts";
-import { PageHeader, StatCard, StatusBadge } from "@/components/dashboard/widgets";
+  PageHeader,
+  StatCard,
+  StatusBadge,
+  LoadingState,
+  ErrorState,
+  EmptyState,
+} from "@/components/dashboard/widgets";
 import { Button } from "@/components/ui/button";
-import { services, usageSeries, requestsSeries, deployments } from "@/lib/mock-data";
+import { useServices, useDeployments } from "@/lib/api/queries";
+import { useAuth } from "@/lib/auth";
+import {
+  relativeTime,
+  serviceBadgeStatus,
+  deploymentStatusTone,
+  titleCase,
+} from "@/lib/api/format";
 
 export const Route = createFileRoute("/dashboard/")({
   head: () => ({ meta: [{ title: "Overview · Stella Hosting" }] }),
@@ -29,10 +24,20 @@ export const Route = createFileRoute("/dashboard/")({
 });
 
 function Overview() {
+  const { user } = useAuth();
+  const services = useServices();
+  const deployments = useDeployments();
+
+  const running = services.data?.filter((s) => s.status === "RUNNING").length ?? 0;
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const deploysToday =
+    deployments.data?.filter((d) => new Date(d.createdAt) >= since).length ?? 0;
+  const threats = 0;
+
   return (
     <div className="animate-fade-in">
       <PageHeader
-        title="Welcome back, octocat"
+        title={`Welcome back, ${user?.name ?? user?.username ?? ""}`.trim()}
         subtitle="Here's what's happening across your services."
         action={
           <Button asChild variant="hero">
@@ -44,74 +49,14 @@ function Overview() {
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Active services" value="4 / 5" icon={Boxes} delta="+1 this week" />
-        <StatCard label="Deploys today" value="12" icon={GitCommit} delta="+24%" />
-        <StatCard label="Avg. CPU" value="34%" icon={Cpu} delta="-6%" positive={false} />
-        <StatCard label="Threats blocked" value="3" icon={ShieldCheck} delta="all quarantined" />
-      </div>
-
-      <div className="mt-4 grid gap-4 lg:grid-cols-3">
-        <div className="glass rounded-2xl p-5 lg:col-span-2">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold">Resource usage</h3>
-              <p className="text-xs text-muted-foreground">CPU & memory · last 24h</p>
-            </div>
-            <Activity className="size-5 text-primary" />
-          </div>
-          <ResponsiveContainer width="100%" height={240}>
-            <AreaChart data={usageSeries}>
-              <defs>
-                <linearGradient id="cpu" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--color-chart-1)" stopOpacity={0.5} />
-                  <stop offset="100%" stopColor="var(--color-chart-1)" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="mem" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--color-chart-2)" stopOpacity={0.5} />
-                  <stop offset="100%" stopColor="var(--color-chart-2)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-              <XAxis dataKey="t" stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
-              <Tooltip
-                contentStyle={{
-                  background: "var(--color-popover)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: 12,
-                  color: "var(--color-popover-foreground)",
-                }}
-              />
-              <Area type="monotone" dataKey="cpu" stroke="var(--color-chart-1)" fill="url(#cpu)" strokeWidth={2} />
-              <Area type="monotone" dataKey="mem" stroke="var(--color-chart-2)" fill="url(#mem)" strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="glass rounded-2xl p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold">Requests</h3>
-              <p className="text-xs text-muted-foreground">This week</p>
-            </div>
-            <MemoryStick className="size-5 text-primary" />
-          </div>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={requestsSeries}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-              <XAxis dataKey="d" stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
-              <Tooltip
-                cursor={{ fill: "var(--color-accent)", opacity: 0.3 }}
-                contentStyle={{
-                  background: "var(--color-popover)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: 12,
-                  color: "var(--color-popover-foreground)",
-                }}
-              />
-              <Bar dataKey="reqs" fill="var(--color-chart-1)" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        <StatCard
+          label="Active services"
+          value={`${running} / ${user?.serviceLimit ?? 5}`}
+          icon={Boxes}
+        />
+        <StatCard label="Deploys today" value={String(deploysToday)} icon={GitCommit} />
+        <StatCard label="Total services" value={String(services.data?.length ?? 0)} icon={Cpu} />
+        <StatCard label="Threats blocked" value={String(threats)} icon={ShieldCheck} />
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
@@ -119,43 +64,75 @@ function Overview() {
           <div className="mb-4 flex items-center justify-between">
             <h3 className="font-semibold">Your services</h3>
             <Button asChild variant="ghost" size="sm">
-              <Link to="/dashboard/services">View all <ArrowRight className="size-4" /></Link>
+              <Link to="/dashboard/services">
+                View all <ArrowRight className="size-4" />
+              </Link>
             </Button>
           </div>
-          <div className="space-y-2">
-            {services.map((s) => (
-              <div key={s.id} className="flex items-center justify-between rounded-xl bg-secondary/40 px-3 py-2.5">
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium">{s.name}</div>
-                  <div className="truncate text-xs text-muted-foreground">{s.repo}</div>
+          {services.isLoading ? (
+            <LoadingState />
+          ) : services.isError ? (
+            <ErrorState message={(services.error as Error)?.message} />
+          ) : services.data && services.data.length > 0 ? (
+            <div className="space-y-2">
+              {services.data.slice(0, 6).map((s) => (
+                <div
+                  key={s.id}
+                  className="flex items-center justify-between rounded-xl bg-secondary/40 px-3 py-2.5"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium">{s.name}</div>
+                    <div className="truncate text-xs text-muted-foreground">{s.repoFullName}</div>
+                  </div>
+                  <StatusBadge status={serviceBadgeStatus(s.status)} />
                 </div>
-                <StatusBadge status={s.status} />
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              title="No services yet"
+              description="Deploy your first project from a GitHub repository."
+              action={
+                <Button asChild variant="hero" size="sm">
+                  <Link to="/dashboard/deploy">Deploy now</Link>
+                </Button>
+              }
+            />
+          )}
         </div>
 
         <div className="glass rounded-2xl p-5">
           <h3 className="mb-4 font-semibold">Recent deployments</h3>
-          <div className="space-y-2">
-            {deployments.slice(0, 5).map((d) => (
-              <div key={d.id} className="flex items-center justify-between rounded-xl bg-secondary/40 px-3 py-2.5">
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium">{d.message}</div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    {d.service} · {d.commit} · {d.when}
-                  </div>
-                </div>
-                <span
-                  className={`shrink-0 text-xs font-medium ${
-                    d.status === "success" ? "text-success" : d.status === "failed" ? "text-destructive" : "text-warning"
-                  }`}
+          {deployments.isLoading ? (
+            <LoadingState />
+          ) : deployments.isError ? (
+            <ErrorState message={(deployments.error as Error)?.message} />
+          ) : deployments.data && deployments.data.length > 0 ? (
+            <div className="space-y-2">
+              {deployments.data.slice(0, 6).map((d) => (
+                <div
+                  key={d.id}
+                  className="flex items-center justify-between rounded-xl bg-secondary/40 px-3 py-2.5"
                 >
-                  {d.status}
-                </span>
-              </div>
-            ))}
-          </div>
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium">
+                      {d.commitMessage ?? `${titleCase(d.source)} deployment`}
+                    </div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {d.service?.name ?? "service"} ·{" "}
+                      {d.commitSha ? d.commitSha.slice(0, 7) + " · " : ""}
+                      {relativeTime(d.createdAt)}
+                    </div>
+                  </div>
+                  <span className={`shrink-0 text-xs font-medium ${deploymentStatusTone[d.status]}`}>
+                    {titleCase(d.status)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="No deployments yet" />
+          )}
         </div>
       </div>
     </div>
