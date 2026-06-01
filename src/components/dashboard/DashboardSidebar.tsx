@@ -86,30 +86,36 @@ export function DashboardSidebar({
             );
           })}
 
-          <div className="my-3 h-px bg-sidebar-border" />
-
-          <Link
-            to="/dashboard/admin"
-            onClick={onClose}
-            className={cn(
-              "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
-              isActive("/dashboard/admin")
-                ? "bg-warning/15 text-warning ring-1 ring-warning/25"
-                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
-            )}
-          >
-            <Crown className="size-[18px]" />
-            Admin Panel
-          </Link>
+          {isAdmin && (
+            <>
+              <div className="my-3 h-px bg-sidebar-border" />
+              <Link
+                to="/dashboard/admin"
+                onClick={onClose}
+                className={cn(
+                  "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
+                  isActive("/dashboard/admin")
+                    ? "bg-warning/15 text-warning ring-1 ring-warning/25"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                )}
+              >
+                <Crown className="size-[18px]" />
+                Admin Panel
+              </Link>
+            </>
+          )}
         </nav>
 
         <div className="glass rounded-2xl p-4">
           <div className="text-xs font-medium text-muted-foreground">Hosting slots</div>
           <div className="mt-1 text-lg font-bold">
-            4 <span className="text-sm font-normal text-muted-foreground">/ 5 used</span>
+            {used} <span className="text-sm font-normal text-muted-foreground">/ {limit} used</span>
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-secondary">
-            <div className="h-full w-4/5 rounded-full bg-gradient-primary" />
+            <div
+              className="h-full rounded-full bg-gradient-primary transition-all"
+              style={{ width: `${pct}%` }}
+            />
           </div>
           <Button asChild variant="hero" size="sm" className="mt-3 w-full">
             <Link to="/dashboard/deploy">New deployment</Link>
