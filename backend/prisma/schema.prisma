@@ -115,6 +115,16 @@ model User {
   status    UserStatus @default(ACTIVE)
 
   serviceLimit Int      @default(5)
+
+  // Personal REST API key (sha256 hash stored; plaintext shown once on rotate).
+  apiKeyHash   String?  @unique
+  apiKeyPrefix String?  // last 4 chars, safe to display (e.g. "3f9a")
+
+  // Notification preferences.
+  notifyDeploys  Boolean @default(true)
+  notifySecurity Boolean @default(true)
+  notifyTelegram Boolean @default(false)
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   lastLoginAt  DateTime?

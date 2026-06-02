@@ -1,9 +1,10 @@
 import { Router } from "express";
 import { z } from "zod";
+import type { User } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { authLimiter } from "../middleware/rate-limit.js";
 import { requireAuth } from "../middleware/auth.js";
-import { randomToken } from "../lib/crypto.js";
+import { randomToken, sha256 } from "../lib/crypto.js";
 import {
   buildAuthorizeUrl,
   exchangeCodeForToken,
@@ -128,10 +129,14 @@ router.get("/github/callback", authLimiter, async (req, res, next) => {
   }
 });
 
-// Current authenticated user.
-router.get("/me", requireAuth, (req, res) => {
-  const u = req.user!;
-  res.json({
+// Builds the masked API key shown in the dashboard (never the real key).
+function maskedApiKey(prefix: string | null): string | null {
+  if (!prefix) return null;
+  return `stella_sk_${"•".repeat(20)}${prefix}`;
+}
+
+function serializeUser(u: User) {
+  return {
     id: u.id,
     username: u.username,
     name: u.name,
@@ -140,7 +145,61 @@ router.get("/me", requireAuth, (req, res) => {
     role: u.role,
     status: u.status,
     serviceLimit: u.serviceLimit,
-  });
+    createdAt: u.createdAt,
+    apiKeyMasked: maskedApiKey(u.apiKeyPrefix),
+    hasApiKey: !!u.apiKeyHash,
+    notifyDeploys: u.notifyDeploys,
+    notifySecurity: u.notifySecurity,
+    notifyTelegram: u.notifyTelegram,
+  };
+}
+
+// Current authenticated user.
+router.get("/me", requireAuth, (req, res) => {
+  res.json(serializeUser(req.user!));
+});
+
+// Update profile + notification preferences.
+const profileSchema = z.object({
+  name: z.string().min(1).max(120).nullish(),
+  notifyDeploys: z.boolean().optional(),
+  notifySecurity: z.boolean().optional(),
+  notifyTelegram: z.boolean().optional(),
+});
+
+router.patch("/profile", requireAuth, async (req, res, next) => {
+  try {
+    const parsed = profileSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Invalid input" });
+    const user = await prisma.user.update({
+      where: { id: req.user!.id },
+      data: parsed.data,
+    });
+    res.json(serializeUser(user));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Generate (or rotate) the user's personal REST API key. The plaintext key is
+// returned exactly once; only its sha256 hash + last 4 chars are persisted.
+router.post("/api-key", requireAuth, async (req, res, next) => {
+  try {
+    const raw = randomToken(24);
+    const key = `stella_sk_${raw}`;
+    const prefix = raw.slice(-4);
+    const user = await prisma.user.update({
+      where: { id: req.user!.id },
+      data: { apiKeyHash: sha256(key), apiKeyPrefix: prefix },
+    });
+    await logSecurityEvent(
+      { type: "PERMISSION_DENIED", severity: "INFO", message: `${user.username} rotated API key`, userId: user.id },
+      req,
+    );
+    res.json({ apiKey: key, ...serializeUser(user) });
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.post("/logout", async (req, res) => {

@@ -11,6 +11,8 @@ import { api } from "./client";
 import type {
   AdminOverview,
   AdminUser,
+  ApiKeyResponse,
+  CurrentUser,
   Deployment,
   DeploymentLog,
   LoginEvent,
@@ -20,6 +22,33 @@ import type {
   Ticket,
   TicketMessage,
 } from "./types";
+
+// ---------------------------------------------------------------- Account
+export interface UpdateProfileInput {
+  name?: string | null;
+  notifyDeploys?: boolean;
+  notifySecurity?: boolean;
+  notifyTelegram?: boolean;
+}
+
+export function useUpdateProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateProfileInput) =>
+      api.patch<CurrentUser>("/api/auth/profile", input),
+    onSuccess: (user) => qc.setQueryData(["auth", "me"], user),
+  });
+}
+
+export function useRegenerateApiKey() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<ApiKeyResponse>("/api/auth/api-key"),
+    onSuccess: ({ apiKey: _apiKey, ...user }) =>
+      qc.setQueryData(["auth", "me"], user as CurrentUser),
+  });
+}
+
 
 // ---------------------------------------------------------------- Services
 export const servicesQuery = () =>

@@ -29,6 +29,16 @@ export interface CurrentUser {
   role: Role;
   status: UserStatus;
   serviceLimit: number;
+  createdAt: string;
+  apiKeyMasked: string | null;
+  hasApiKey: boolean;
+  notifyDeploys: boolean;
+  notifySecurity: boolean;
+  notifyTelegram: boolean;
+}
+
+export interface ApiKeyResponse extends CurrentUser {
+  apiKey: string;
 }
 
 export interface Deployment {
