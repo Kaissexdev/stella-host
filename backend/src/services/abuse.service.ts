@@ -33,8 +33,8 @@ async function lookupIpIntel(ip: string): Promise<IpIntel> {
       proxy: Boolean(data.proxy ?? data.is_proxy),
       asn: data.asn ? String(data.asn) : undefined,
       location:
-        data.location?.toString() ??
-        [data.city, data.country].filter(Boolean).join(", ") ||
+        (data.location?.toString() ??
+        [data.city, data.country].filter(Boolean).join(", ")) ||
         undefined,
     };
   } catch {
