@@ -135,7 +135,7 @@ function maskedApiKey(prefix: string | null): string | null {
   return `stella_sk_${"•".repeat(20)}${prefix}`;
 }
 
-function serializeUser(u: NonNullable<typeof globalThis extends never ? never : import("@prisma/client").User>) {
+function serializeUser(u: User) {
   return {
     id: u.id,
     username: u.username,
