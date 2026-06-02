@@ -1,9 +1,10 @@
 import { Router } from "express";
 import { z } from "zod";
+import type { User } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { authLimiter } from "../middleware/rate-limit.js";
 import { requireAuth } from "../middleware/auth.js";
-import { randomToken } from "../lib/crypto.js";
+import { randomToken, sha256 } from "../lib/crypto.js";
 import {
   buildAuthorizeUrl,
   exchangeCodeForToken,
