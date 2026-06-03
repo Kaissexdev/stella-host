@@ -273,7 +273,12 @@ systemctl enable --now stella-backend.service
 systemctl enable --now stella-frontend.service
 
 log "Done! 🚀"
-log "Backend:  http://$(hostname -I | awk '{print $1}'):${BACKEND_PORT}/health"
-log "Frontend: http://$(hostname -I | awk '{print $1}'):${FRONTEND_PORT}"
-warn "Edit ${ENV_FILE} to add GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET, then:"
-warn "  systemctl restart stella-backend"
+log "Backend:  http://${HOST_IP}:${BACKEND_PORT}/health"
+log "Frontend: http://${HOST_IP}:${FRONTEND_PORT}"
+log "GitHub OAuth callback URL: ${API_BASE_URL}/api/auth/github/callback"
+if [ -n "$GH_ID" ] && [ -n "$GH_SECRET" ]; then
+  log "GitHub OAuth credentials detected — the platform is fully configured."
+else
+  warn "Add GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET to ${ENV_FILE}, then re-run:"
+  warn "  sudo bash installer.sh   (or: systemctl restart stella-backend)"
+fi
