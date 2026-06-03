@@ -95,7 +95,30 @@ chown -R "$SERVICE_USER":"$SERVICE_USER" "$WORKSPACE_DIR"
 # PostgreSQL + Redis (via Docker for portability across distros)
 # --------------------------------------------------------------------------
 log "Ensuring PostgreSQL and Redis containers are running…"
-PG_PASS="${PG_PASS:-$(openssl rand -hex 16)}"
+
+ENV_FILE="${BACKEND_DIR}/.env"
+
+# Read a KEY=value from a dotenv file (ignores comments/quotes). Empty if absent.
+read_env_value() {
+  local key="$1" file="$2"
+  [ -f "$file" ] || return 0
+  sed -n "s/^[[:space:]]*${key}[[:space:]]*=[[:space:]]*//p" "$file" \
+    | tail -n1 | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//"
+}
+
+# Resolve the DB password. Priority:
+#   1. password embedded in an existing backend/.env DATABASE_URL
+#   2. PG_PASS env override
+#   3. a freshly generated random password
+# Keeping it stable across re-runs guarantees it matches the password already
+# baked into the postgres data volume (otherwise: P1000 auth failed).
+PRIOR_DB_URL="$(read_env_value DATABASE_URL "$ENV_FILE")"
+PRIOR_PG_PASS=""
+if [ -n "$PRIOR_DB_URL" ]; then
+  PRIOR_PG_PASS="$(printf '%s' "$PRIOR_DB_URL" | sed -n 's#^postgresql://[^:]*:\([^@]*\)@.*#\1#p')"
+fi
+PG_PASS="${PRIOR_PG_PASS:-${PG_PASS:-$(openssl rand -hex 16)}}"
+
 docker volume create stella-pgdata >/dev/null
 docker volume create stella-redisdata >/dev/null
 
@@ -103,12 +126,32 @@ if ! docker ps -a --format '{{.Names}}' | grep -q '^stella-postgres$'; then
   docker run -d --name stella-postgres --restart unless-stopped \
     -e POSTGRES_USER=stella -e POSTGRES_PASSWORD="$PG_PASS" -e POSTGRES_DB=stella \
     -p 127.0.0.1:5432:5432 -v stella-pgdata:/var/lib/postgresql/data postgres:16-alpine
+else
+  docker start stella-postgres >/dev/null 2>&1 || true
 fi
 if ! docker ps -a --format '{{.Names}}' | grep -q '^stella-redis$'; then
   docker run -d --name stella-redis --restart unless-stopped \
     -p 127.0.0.1:6379:6379 -v stella-redisdata:/data redis:7-alpine \
     redis-server --appendonly yes
+else
+  docker start stella-redis >/dev/null 2>&1 || true
 fi
+
+# Wait for PostgreSQL to accept connections before touching it.
+log "Waiting for PostgreSQL to become ready…"
+for _ in $(seq 1 60); do
+  docker exec stella-postgres pg_isready -U stella -d stella >/dev/null 2>&1 && break
+  sleep 2
+done
+
+# Sync the postgres role password to match what we write into .env. The official
+# image trusts local socket connections, so no password is needed here. This
+# repairs any drift between a pre-existing data volume and the .env file.
+log "Synchronizing database password…"
+docker exec stella-postgres psql -v ON_ERROR_STOP=1 -U stella -d stella \
+  -c "ALTER USER stella WITH PASSWORD '${PG_PASS}';" >/dev/null 2>&1 \
+  || warn "Could not sync DB password automatically (relying on existing credentials)."
+
 
 # --------------------------------------------------------------------------
 # Environment file — fully automatic.
