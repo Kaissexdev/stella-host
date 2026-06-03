@@ -111,28 +111,80 @@ if ! docker ps -a --format '{{.Names}}' | grep -q '^stella-redis$'; then
 fi
 
 # --------------------------------------------------------------------------
-# Environment file
+# Environment file — fully automatic.
+#
+# The ONLY thing you ever need to provide is your GitHub OAuth app:
+#   GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET
+#
+# Put them in any of these (checked in order) and the installer does the rest:
+#   1. backend/.env
+#   2. ./.env            (project root)
+#   3. GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET environment variables
+#
+# Everything else (DB password, secrets, encryption key, webhook secret,
+# ports, URLs) is generated automatically and never overwritten on re-runs.
 # --------------------------------------------------------------------------
 ENV_FILE="${BACKEND_DIR}/.env"
-if [ ! -f "$ENV_FILE" ]; then
-  log "Generating ${ENV_FILE} (fill in GitHub credentials before going live)…"
-  cat > "$ENV_FILE" <<EOF
+
+# Read a KEY=value from a dotenv file (ignores comments/quotes). Empty if absent.
+read_env_value() {
+  local key="$1" file="$2"
+  [ -f "$file" ] || return 0
+  sed -n "s/^[[:space:]]*${key}[[:space:]]*=[[:space:]]*//p" "$file" \
+    | tail -n1 | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//"
+}
+
+# Resolve GitHub credentials from (in priority): backend/.env, root .env, env vars.
+GH_ID="${GITHUB_CLIENT_ID:-}"
+GH_SECRET="${GITHUB_CLIENT_SECRET:-}"
+for SRC in "$ENV_FILE" "${APP_DIR}/.env"; do
+  [ -n "$GH_ID" ]     || GH_ID="$(read_env_value GITHUB_CLIENT_ID "$SRC")"
+  [ -n "$GH_SECRET" ] || GH_SECRET="$(read_env_value GITHUB_CLIENT_SECRET "$SRC")"
+done
+
+# Preserve previously generated secrets across re-runs so sessions stay valid.
+PRIOR_SESSION_SECRET="$(read_env_value SESSION_SECRET "$ENV_FILE")"
+PRIOR_ENCRYPTION_KEY="$(read_env_value ENCRYPTION_KEY "$ENV_FILE")"
+PRIOR_WEBHOOK_SECRET="$(read_env_value GITHUB_WEBHOOK_SECRET "$ENV_FILE")"
+PRIOR_DB_URL="$(read_env_value DATABASE_URL "$ENV_FILE")"
+
+SESSION_SECRET="${PRIOR_SESSION_SECRET:-$(openssl rand -hex 32)}"
+ENCRYPTION_KEY="${PRIOR_ENCRYPTION_KEY:-$(openssl rand -hex 32)}"
+GITHUB_WEBHOOK_SECRET="${PRIOR_WEBHOOK_SECRET:-$(openssl rand -hex 32)}"
+# Keep the existing DB URL (with its password) if we already provisioned one.
+DATABASE_URL="${PRIOR_DB_URL:-postgresql://stella:${PG_PASS}@127.0.0.1:5432/stella?schema=public}"
+
+HOST_IP="$(hostname -I | awk '{print $1}')"
+API_BASE_URL="${API_BASE_URL:-http://${HOST_IP}:${BACKEND_PORT}}"
+WEB_BASE_URL="${WEB_BASE_URL:-http://${HOST_IP}:${FRONTEND_PORT}}"
+
+if [ -z "$GH_ID" ] || [ -z "$GH_SECRET" ]; then
+  warn "GitHub OAuth credentials not found yet."
+  warn "Create an OAuth app at https://github.com/settings/developers with:"
+  warn "  Authorization callback URL: ${API_BASE_URL}/api/auth/github/callback"
+  warn "Then add to ${ENV_FILE}:"
+  warn "  GITHUB_CLIENT_ID=...    GITHUB_CLIENT_SECRET=..."
+  warn "and re-run: sudo bash installer.sh"
+fi
+
+log "Writing ${ENV_FILE} (auto-generated; only GitHub credentials are user-supplied)…"
+cat > "$ENV_FILE" <<EOF
 NODE_ENV=production
 PORT=${BACKEND_PORT}
-API_BASE_URL=http://$(hostname -I | awk '{print $1}'):${BACKEND_PORT}
-WEB_BASE_URL=http://$(hostname -I | awk '{print $1}'):${FRONTEND_PORT}
+API_BASE_URL=${API_BASE_URL}
+WEB_BASE_URL=${WEB_BASE_URL}
 
-DATABASE_URL=postgresql://stella:${PG_PASS}@127.0.0.1:5432/stella?schema=public
+DATABASE_URL=${DATABASE_URL}
 REDIS_URL=redis://127.0.0.1:6379
 
-SESSION_SECRET=$(openssl rand -hex 32)
+SESSION_SECRET=${SESSION_SECRET}
 SESSION_TTL_DAYS=7
 
-ENCRYPTION_KEY=$(openssl rand -hex 32)
+ENCRYPTION_KEY=${ENCRYPTION_KEY}
 
-GITHUB_CLIENT_ID=
-GITHUB_CLIENT_SECRET=
-GITHUB_WEBHOOK_SECRET=$(openssl rand -hex 32)
+GITHUB_CLIENT_ID=${GH_ID}
+GITHUB_CLIENT_SECRET=${GH_SECRET}
+GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
 
 MAX_ACCOUNTS_PER_DEVICE=2
 MAX_ACCOUNTS_PER_IP=3
@@ -140,18 +192,16 @@ MAX_ACCOUNTS_PER_IP=3
 RUNNER_ENABLED=true
 WORKSPACE_DIR=${WORKSPACE_DIR}
 DEPLOY_BASE_IMAGE=node:20-bookworm-slim
-DEPLOY_PUBLIC_HOST=$(hostname -I | awk '{print $1}')
+DEPLOY_PUBLIC_HOST=${HOST_IP}
 DEPLOY_PORT_START=41000
 DEPLOY_PORT_END=42000
 DEPLOY_CONTAINER_PORT=8080
 DEPLOY_CPU_LIMIT=1
 DEPLOY_MEMORY_LIMIT=512m
 EOF
-  chown "$SERVICE_USER":"$SERVICE_USER" "$ENV_FILE"
-  chmod 600 "$ENV_FILE"
-else
-  log "Reusing existing ${ENV_FILE}."
-fi
+chown "$SERVICE_USER":"$SERVICE_USER" "$ENV_FILE"
+chmod 600 "$ENV_FILE"
+
 
 # --------------------------------------------------------------------------
 # Build backend
@@ -223,7 +273,12 @@ systemctl enable --now stella-backend.service
 systemctl enable --now stella-frontend.service
 
 log "Done! 🚀"
-log "Backend:  http://$(hostname -I | awk '{print $1}'):${BACKEND_PORT}/health"
-log "Frontend: http://$(hostname -I | awk '{print $1}'):${FRONTEND_PORT}"
-warn "Edit ${ENV_FILE} to add GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET, then:"
-warn "  systemctl restart stella-backend"
+log "Backend:  http://${HOST_IP}:${BACKEND_PORT}/health"
+log "Frontend: http://${HOST_IP}:${FRONTEND_PORT}"
+log "GitHub OAuth callback URL: ${API_BASE_URL}/api/auth/github/callback"
+if [ -n "$GH_ID" ] && [ -n "$GH_SECRET" ]; then
+  log "GitHub OAuth credentials detected — the platform is fully configured."
+else
+  warn "Add GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET to ${ENV_FILE}, then re-run:"
+  warn "  sudo bash installer.sh   (or: systemctl restart stella-backend)"
+fi

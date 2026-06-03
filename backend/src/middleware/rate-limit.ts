@@ -13,7 +13,7 @@ function makeLimiter(opts: { windowMs: number; max: number; prefix: string }) {
     keyGenerator: (req) => getClientIp(req),
     store: new RedisStore({
       prefix: `rl:${opts.prefix}:`,
-      sendCommand: (...args: (string | number | Buffer)[]) => redis.call(...args) as Promise<never>,
+      sendCommand: (...args: string[]) => redis.call(args[0], ...args.slice(1)) as Promise<never>,
     }),
     handler: (_req, res) => res.status(429).json({ error: "Too many requests" }),
   });
