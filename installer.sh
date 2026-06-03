@@ -167,15 +167,7 @@ docker exec stella-postgres psql -v ON_ERROR_STOP=1 -U stella -d stella \
 # Everything else (DB password, secrets, encryption key, webhook secret,
 # ports, URLs) is generated automatically and never overwritten on re-runs.
 # --------------------------------------------------------------------------
-ENV_FILE="${BACKEND_DIR}/.env"
-
-# Read a KEY=value from a dotenv file (ignores comments/quotes). Empty if absent.
-read_env_value() {
-  local key="$1" file="$2"
-  [ -f "$file" ] || return 0
-  sed -n "s/^[[:space:]]*${key}[[:space:]]*=[[:space:]]*//p" "$file" \
-    | tail -n1 | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//"
-}
+# (read_env_value, ENV_FILE, PRIOR_DB_URL and PG_PASS are resolved above.)
 
 # Resolve GitHub credentials from (in priority): backend/.env, root .env, env vars.
 GH_ID="${GITHUB_CLIENT_ID:-}"
@@ -189,13 +181,12 @@ done
 PRIOR_SESSION_SECRET="$(read_env_value SESSION_SECRET "$ENV_FILE")"
 PRIOR_ENCRYPTION_KEY="$(read_env_value ENCRYPTION_KEY "$ENV_FILE")"
 PRIOR_WEBHOOK_SECRET="$(read_env_value GITHUB_WEBHOOK_SECRET "$ENV_FILE")"
-PRIOR_DB_URL="$(read_env_value DATABASE_URL "$ENV_FILE")"
 
 SESSION_SECRET="${PRIOR_SESSION_SECRET:-$(openssl rand -hex 32)}"
 ENCRYPTION_KEY="${PRIOR_ENCRYPTION_KEY:-$(openssl rand -hex 32)}"
 GITHUB_WEBHOOK_SECRET="${PRIOR_WEBHOOK_SECRET:-$(openssl rand -hex 32)}"
-# Keep the existing DB URL (with its password) if we already provisioned one.
-DATABASE_URL="${PRIOR_DB_URL:-postgresql://stella:${PG_PASS}@127.0.0.1:5432/stella?schema=public}"
+# DB URL uses the password we resolved/synced above.
+DATABASE_URL="postgresql://stella:${PG_PASS}@127.0.0.1:5432/stella?schema=public"
 
 HOST_IP="$(hostname -I | awk '{print $1}')"
 API_BASE_URL="${API_BASE_URL:-http://${HOST_IP}:${BACKEND_PORT}}"
